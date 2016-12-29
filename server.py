@@ -33,7 +33,7 @@ def make_prediction():
 if __name__ == '__main__':
     try:
         print 'Starting the server...'
-        start_restfulserver()
+        #start_restfulserver()
         print 'Started the server...'
         min_date = None
         mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
@@ -43,7 +43,7 @@ if __name__ == '__main__':
                 print(min_date)
             except Exception:
                 raise
-            time.sleep(10)
+            time.sleep(2)
     except Exception, err:
         raise
         print 'Caught FATAL exception: %s' % str(err)

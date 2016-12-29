@@ -2,23 +2,17 @@ import json
 import requests
 from dateutil.parser import parse
 
-from mongoDAO import SpitsGidsMongoDAO
-
-
-# TODO: requests to https://api.irail.be/logs/
-# TODO: parse all logs, keep track of time of latest parsed log
-
 
 def parse_logs(url, mongoDAO, min_date=None):
     for line in requests.get(url).json():
-        #print(line)
         result, parsed_log = parse_log_line(line, min_date)
         if result == 2:
             print('break loop')
             break
         elif result == 1:
-            mongoDAO.insert_log(parsed_log)
-            min_date = parsed_log['querytime']
+            if mongoDAO.find_log_by_vehicle_and_querytime(parsed_log['vehicle_id'], parsed_log['querytime']) is None:
+                mongoDAO.insert_log(parsed_log)
+                min_date = parsed_log['querytime']
     return min_date
 
 
@@ -30,8 +24,9 @@ def insert_logs_from_file(file, mongoDAO):
             occ_logline = json.loads(line)
             result, parsed_log = parse_log_line(occ_logline)
             if result == 1:
-                mongoDAO.insert_log(parsed_log)
-                succeeded_logs += 1
+                if mongoDAO.find_log_by_vehicle_and_querytime(parsed_log['vehicle_id'], parsed_log['querytime']) is None:
+                    mongoDAO.insert_log(parsed_log)
+                    succeeded_logs += 1
             else: faulty_logs += 1
         return succeeded_logs, faulty_logs
 
@@ -48,7 +43,6 @@ def parse_log_line(logline, min_date=None):
             vehicle_id = connection.split('/')[-1]
             user_agent = logline['user_agent']
 
-            print('cmp:', min_date, querytime)
             if min_date is not None and min_date >= querytime:
                 return 2, None
 
@@ -66,9 +60,10 @@ def parse_log_line(logline, min_date=None):
                 return 1, parsed_log
         except Exception as e:
             return 0, None
-    else:
-        return 0, None
+    return 0, None
 
-#mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
+# from mongoDAO import SpitsGidsMongoDAO
+#
+# mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
 # print(insert_logs_from_file('occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO))
 # print(insert_logs_from_file('occupancy-until-20161219.nldjson', mongoDAO))

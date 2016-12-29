@@ -15,7 +15,9 @@ class SpitsGidsMongoDAO(object):
         return self.db['logs'].insert_one(log)
 
     def find_log_by_vehicle_and_querytime(self, vehicle, querytime):
-        pass
+        result = self.db['logs'].find_one({"vehicle_id": vehicle,
+                                           "querytime": querytime})
+        return result
 
     def insert_logs(self, logs):
         return self.db['logs'].insert_many(logs)

@@ -22,9 +22,31 @@ def start_restfulserver(local=False):
         app.run(debug=True, port=HOST_IP)
 
 
-@app.route('/', methods=['GET'])
-def make_prediction():
-    # request.args.get('data')
+@app.route('/predict_by_vehicle', methods=['GET'])
+def predict_by_vehicle():
+    vehicle = request.args.get('vehicle')
+    departureTime = request.args.get('departureTime')
+
+    d = {'prediction': 'low'}
+    return jsonify(d)
+
+
+@app.route('/predict_by_from_to', methods=['GET'])
+def predict_by_from_to():
+    departureTime = request.args.get('departureTime')
+    _from = request.args.get('from')
+    _to = request.args.get('to')
+
+    d = {'prediction': 'low'}
+    return jsonify(d)
+
+@app.route('/predict', methods=['GET'])
+def predict():
+    departureTime = request.args.get('departureTime')
+    vehicle = request.args.get('vehicle')
+    _from = request.args.get('from')
+    _to = request.args.get('to')
+
     d = {'prediction': 'low'}
     return jsonify(d)
 

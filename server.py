@@ -1,5 +1,3 @@
-import thread
-
 import time
 from flask import Flask, request, abort, jsonify
 from flask_restful import Resource, Api
@@ -54,9 +52,9 @@ def predict():
 # Run this only if the script is ran directly.
 if __name__ == '__main__':
     try:
-        print 'Starting the server...'
+        print('Starting the server...')
         #start_restfulserver()
-        print 'Started the server...'
+        print('Started the server...')
         min_date = None
         mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
         while 1:
@@ -66,6 +64,6 @@ if __name__ == '__main__':
             except Exception:
                 raise
             time.sleep(2)
-    except Exception, err:
+    except Exception:
+        print('Caught FATAL exception:')
         raise
-        print 'Caught FATAL exception: %s' % str(err)

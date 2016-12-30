@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 import pandas as pd
+from xgb import XGBModel
 
 from feature_extractor import extract_basic_features
 
@@ -59,19 +60,31 @@ class SpitsGidsMongoDAO(object):
         feature_vector['log_id'] = log_id
         return self.db['features'].insert_one(feature_vector)
 
-    def insert_feature_vectors(self, logs, feature_vectors):
-        """
-        Inserts multiple feature vectors, that are calculated from certain logs (linked by _id)
-        :param logs: list of logs
-        :param feature_vectors: list of feature_vectors
-        :return: result object
-        """
-        for log, feature_vector in zip(logs, feature_vectors):
-            log_id = self.db['logs'].find(log)["_id"]
-            if log_id is None:
-                log_id = self.insert_log(log)["inserted_id"]
-            feature_vector['log_id'] = log_id
-        return self.db['features'].insert_many(feature_vectors)
+    def load_xgb_clf(self):
+        feature_vectors = []
+        for feature_vector in self.db['features'].find({}):
+            feature_vectors.append(feature_vector)
+
+        label_col = 'occupancy'
+        df = pd.DataFrame(feature_vectors)
+        df = pd.get_dummies(df, columns=['week_day', 'vehicle_id', 'vehicle_type'])
+        df = df.drop(['_id', 'log_id'], axis=1)
+        return XGBModel(df, list(set(df.columns) - {'occupancy'}), label_col)
+
+    def optimize_hyperparams(self):
+        self.process_unprocessed_logs()
+        print(self.load_xgb_clf().optimize_hyperparams(init_points=3, n_iter=3))
+
+    def train_model(self):
+        # TODO: create a table to store the model (model, data) and the hyper-parameters
+        # TODO: load the most recent model and train it with extra new data
+        # TODO: store the new model
+        self.process_unprocessed_logs()
+        xgb_clf = self.load_xgb_clf()
+        if xgb_clf.parameters == {}:
+            xgb_clf.optimize_hyperparams()
+        xgb_clf.construct_model()
+        xgb_clf.model_to_json()
 
     def process_unprocessed_logs(self):
         """
@@ -85,6 +98,16 @@ class SpitsGidsMongoDAO(object):
             processed_log, feature_vector = extract_basic_features(log)
             self.insert_feature_vector(processed_log, feature_vector)
             self.db['logs'].update_one(log, {"$set": {'processed': True}})
+
+    def count_records_per_table(self):
+        print('Number of logs:', self.db['logs'].find({}).count())
+        print('Number of feature vectors:', self.db['logs'].find({}).count())
+
+    def clean_logs_table(self):
+        self.db['logs'].remove({})
+
+    def clean_features_table(self):
+        self.db['features'].remove({})
 
     def load_stations_table(self, stations_csv):
         """

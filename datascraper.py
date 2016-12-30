@@ -33,7 +33,7 @@ def insert_logs_from_file(file, mongoDAO):
 
 def parse_log_line(logline, min_date=None):
     if logline['querytype'] == 'occupancy' and 'error' not in logline and 'querytime' in logline:
-        print 'Got occupancy log'
+        print('Got occupancy log')
         try:
             querytime = parse(logline['querytime'])
             from_id = logline['post']['from'].split('/')[-1]
@@ -57,7 +57,7 @@ def parse_log_line(logline, min_date=None):
                 parsed_log['connection'] = connection
                 parsed_log['user_agent'] = user_agent
                 parsed_log['processed'] = False
-                print 'success'
+                print('success')
                 return 1, parsed_log
         except Exception as e:
             return 0, None
@@ -66,7 +66,15 @@ def parse_log_line(logline, min_date=None):
 from mongoDAO import SpitsGidsMongoDAO
 
 mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
-#print(insert_logs_from_file('occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO))
+mongoDAO.clean_logs_table()
+mongoDAO.clean_features_table()
+# print(insert_logs_from_file('occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO))
 # print(insert_logs_from_file('data/occupancy-until-20161219.nldjson', mongoDAO))
+print(insert_logs_from_file('data/limited_logs.nldjson', mongoDAO))
 mongoDAO.process_unprocessed_logs()
-mongoDAO.load_stations_table('data/station_drukte_link.csv')
+mongoDAO.train_model()
+# mongoDAO.optimize_hyperparams()
+# mongoDAO.load_stations_table('data/station_drukte_link.csv')
+
+# mongoDAO.count_records_per_table()
+# mongoDAO.clean_features_table()

@@ -95,7 +95,7 @@ class SpitsGidsMongoDAO(object):
         unprocessed_logs = self.db['logs'].find({'processed': False})
         for log in unprocessed_logs:
             log.pop('empty', None)
-            processed_log, feature_vector = extract_basic_features(log)
+            processed_log, feature_vector = extract_basic_features(log, self)
             self.insert_feature_vector(processed_log, feature_vector)
             self.db['logs'].update_one(log, {"$set": {'processed': True}})
 
@@ -115,7 +115,15 @@ class SpitsGidsMongoDAO(object):
         :param stations_csv: csv file containing the information about stations
         :return: nothing
         """
-        if self.db['stations'].find({}).count() == 0:
-            stations_df = pd.read_csv(stations_csv)
-            self.db['stations'].insert_many(stations_df[['station', 'week', 'zaterdag', 'zondag',
-                                                           'lat', 'lng', 'station_link']].to_dict(orient='records'))
+        self.db['stations'].remove({})
+        stations_df = pd.read_csv(stations_csv)
+        stations_df['ID'] = stations_df['URI'].apply(lambda x: x.split('/')[-1])
+        self.db['stations'].insert_many(stations_df[['ID', 'name', 'country-code', 'longitude',
+                                                     'latitude', 'avg_stop_times']].to_dict(orient='records'))
+
+    def get_station_info_by_id(self, station_id):
+        station_cursor = self.db['stations'].find({'ID': station_id})
+        if station_cursor.count() == 0:
+            return None
+        else:
+            return station_cursor[0]

@@ -4,6 +4,13 @@ from dateutil.parser import parse
 
 
 def parse_logs(url, mongoDAO, min_date=None):
+    """
+    Parses all logs that are produced after min_date and stores them in the DB
+    :param url: the url where the logs can be retrieved
+    :param mongoDAO: DAO of the database to store the newly processed logs in
+    :param min_date: only logs that are produced later than min_date are processed
+    :return: the new min_date
+    """
     for line in requests.get(url).json():
         result, parsed_log = parse_log_line(line, min_date)
         if result == 2:
@@ -17,6 +24,12 @@ def parse_logs(url, mongoDAO, min_date=None):
 
 
 def insert_logs_from_file(file, mongoDAO):
+    """
+    Parses all logs in a given file
+    :param file: path of the file containing the logs
+    :param mongoDAO: DAO of the database to store the newly processed logs in
+    :return: the number of succeeded and failed logs
+    """
     succeeded_logs = 0
     faulty_logs = 0
     with open(file) as data_file:
@@ -32,6 +45,12 @@ def insert_logs_from_file(file, mongoDAO):
 
 
 def parse_log_line(logline, min_date=None):
+    """
+    Retrieve all fields from a log line, do some processing and return them as a dict
+    :param logline: the log to process
+    :param min_date: the log will only be processed if querytime < min_date
+    :return: a dict containing all retrieved fields, which can be stored immediately as JSON in the DB.
+    """
     if logline['querytype'] == 'occupancy' and 'error' not in logline and 'querytime' in logline:
         print('Got occupancy log')
         try:
@@ -63,18 +82,25 @@ def parse_log_line(logline, min_date=None):
             return 0, None
     return 0, None
 
-from mongoDAO import SpitsGidsMongoDAO
 
+
+
+from mongoDAO import SpitsGidsMongoDAO
+#
 mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
+# mongoDAO.clean_logs_table()
+# mongoDAO.clean_features_table()
+# # print(insert_logs_from_file('occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO))
+# # print(insert_logs_from_file('data/occupancy-until-20161219.nldjson', mongoDAO))
+# print(insert_logs_from_file('data/limited_logs.nldjson', mongoDAO))
+# mongoDAO.process_unprocessed_logs()
+# mongoDAO.train_model()
+# mongoDAO.optimize_hyperparams()
+# mongoDAO.load_stations_table('data/stations.csv')
+# print(mongoDAO.get_station_info_by_id('008844008'))
+# mongoDAO.count_records_per_table()
+
 mongoDAO.clean_logs_table()
 mongoDAO.clean_features_table()
-# print(insert_logs_from_file('occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO))
-# print(insert_logs_from_file('data/occupancy-until-20161219.nldjson', mongoDAO))
-print(insert_logs_from_file('data/limited_logs.nldjson', mongoDAO))
+insert_logs_from_file('data/occupancy-until-20161219.nldjson', mongoDAO)
 mongoDAO.process_unprocessed_logs()
-mongoDAO.train_model()
-# mongoDAO.optimize_hyperparams()
-# mongoDAO.load_stations_table('data/station_drukte_link.csv')
-
-# mongoDAO.count_records_per_table()
-# mongoDAO.clean_features_table()

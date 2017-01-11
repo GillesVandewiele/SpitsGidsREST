@@ -6,6 +6,7 @@ from sklearn.cross_validation import cross_val_score
 from xgboost import XGBClassifier
 import xgboost
 
+
 class XGBModel(object):
     def __init__(self, train, feature_names, label_name):
         self.train = train

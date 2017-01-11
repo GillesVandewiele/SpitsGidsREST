@@ -3,6 +3,8 @@ from flask import Flask, request, jsonify
 from flask_restful import Api
 import threading
 
+from sklearn.preprocessing import OneHotEncoder
+
 from datascraper import parse_logs
 from feature_extractor import extract_features_prediction
 from mongoDAO import SpitsGidsMongoDAO
@@ -12,94 +14,107 @@ import numpy as np
 
 from xgb import XGBModel
 
-SERVER_IP = 'localhost'
-HOST_IP = 8000
-app = Flask(__name__)
-api = Api(app)
 
+class SpitsGidsServer:
 
-def load_xgb_clf():
-    feature_vectors = []
-    for feature_vector in mongoDAO.db['features'].find({}):
-        feature_vectors.append(feature_vector)
+    def __init__(self, host, port):
+        self.app = Flask('SpitsGidsServer')
+        api = Api(self.app)
+        self.host = host
+        self.port = port
+        self.xgb_clf = None
+        self.feature_cols = None
+        self.categorical_cols = ['week_day', 'vehicle_type', 'vehicle_id']
+        self.label_col = None
+        self.data = None
+        self.start_server(self.host, self.port)
 
-    label_col = 'occupancy'
-    df = pd.DataFrame(feature_vectors)
-    # df = pd.get_dummies(df, columns=['week_day', 'vehicle_type', 'vehicle_id'])
-    df = df.drop(['_id', 'log_id'], axis=1)
-    global feature_cols
-    feature_cols = list(set(df.columns) - {'occupancy'})
-    return XGBModel(df, feature_cols, label_col)
+    def train_model(self):
+        mongoDAO.process_unprocessed_logs()
 
+        feature_vectors = mongoDAO.get_feature_vectors()
+        self.label_col = 'occupancy'
+        self.data = pd.DataFrame(feature_vectors)
+        print(self.data['week_day'])
+        self.data = pd.get_dummies(self.data, columns=self.categorical_cols)
+        print(self.data)
+        self.data = self.data.drop(['_id', 'log_id'], axis=1)
+        self.feature_cols = list(set(self.data.columns) - {'occupancy'})
+        self.xgb_clf = XGBModel(self.data, self.feature_cols, self.label_col)
 
-def train_model():
-    mongoDAO.process_unprocessed_logs()
-    xgb_clf = load_xgb_clf()
-    # if xgb_clf.parameters == {}:
-    #     xgb_clf.optimize_hyperparams()
-    xgb_clf.construct_model()
-    return xgb_clf.model
+        # if self.xgb_clf.parameters == {}:
+        #     self.xgb_clf.optimize_hyperparams()
 
+        self.xgb_clf.construct_model()
 
-# Start the restful server.
-def start_restfulserver(local=False):
-    global xgb
-    xgb = train_model()
-    if not local:
-        app.run(host=SERVER_IP, port=HOST_IP)
-    else:
-        app.run(debug=True, port=HOST_IP)
+    def start_server(self, host, port, local=False):
+        self.train_model()
+        self.add_routes()
+        if not local:
+            self.app.run(host=host, port=port)
+        else:
+            self.app.run(debug=True, port=host)
 
+    def predict(self, departure_time, vehicle, _from, _to):
+        df = pd.DataFrame([extract_features_prediction(departure_time, vehicle, _from, _to, mongoDAO)])
+        df = pd.get_dummies(df, self.categorical_cols)
+        dummies_frame = pd.get_dummies(self.data)
+        df = df.reindex(columns=dummies_frame.columns, fill_value=0)
+        print(df)
+        df = df[self.feature_cols]
+        return self.xgb_clf.model.predict_proba(df)[0]
 
-@app.route('/predict_by_vehicle', methods=['GET'])
-def predict_by_vehicle():
-    """
-    Predicts the occupancy level, given a certain vehicle identifier and its departure time
-    :return: the predicted occupancy level of that vehicle on that time
-    """
-    vehicle = request.args.get('vehicle')
-    departureTime = request.args.get('departureTime')
+    def add_routes(self):
 
-    d = {'prediction': 'unknown'}
-    return jsonify(d)
+        @self.app.route('/predict_by_vehicle', methods=['GET'])
+        def predict_by_vehicle():
+            """
+            Predicts the occupancy level, given a certain vehicle identifier and its departure time
+            :return: the predicted occupancy level of that vehicle on that time
+            """
+            vehicle = request.args.get('vehicle')
+            departureTime = request.args.get('departureTime')
+            # Todo: return a matrix with (from, to) combinations
 
+            d = {'prediction': 'unknown'}
+            return jsonify(d)
 
-@app.route('/predict_by_from_to', methods=['GET'])
-def predict_by_from_to():
-    """
-    Predicts the occupancy level, given a certain departure and arrival station and time
-    :return: the predicted occupancy level
-    """
-    departureTime = request.args.get('departureTime')
-    _from = request.args.get('from')
-    _to = request.args.get('to')
+        @self.app.route('/predict_by_from_to', methods=['GET'])
+        def predict_by_from_to():
+            """
+            Predicts the occupancy level, given a certain departure and arrival station and time
+            :return: the predicted occupancy level
+            """
+            departureTime = request.args.get('departureTime')
+            _from = request.args.get('from')
+            _to = request.args.get('to')
+            # Todo: lookup the right vehicle and call predict()
 
-    d = {'prediction': 'unknown'}
-    return jsonify(d)
+            d = {'prediction': 'unknown'}
+            return jsonify(d)
 
+        @self.app.route('/predict', methods=['GET'])
+        def predict():
+            """
+            Predicts the occupancy level, given a certain departure time, arrival and departure station and departure time
+            :return: the predicted occupancy level
+            """
+            departureTime = parse(request.args.get('departureTime'))
+            vehicle = request.args.get('vehicle')
+            _from = request.args.get('from')
+            _to = request.args.get('to')
+            pred = self.predict(departureTime, vehicle, _from, _to)
 
-@app.route('/predict', methods=['GET'])
-def predict():
-    """
-    Predicts the occupancy level, given a certain departure time, arrival and departure station and departure time
-    :return: the predicted occupancy level
-    """
-    departureTime = parse(request.args.get('departureTime'))
-    vehicle = request.args.get('vehicle')
-    _from = request.args.get('from')
-    _to = request.args.get('to')
-    df = pd.DataFrame([extract_features_prediction(departureTime, vehicle, _from, _to, mongoDAO)])
-    df = df[feature_cols]
-    print(df)
-    pred = xgb.predict_proba(df)[0]
-
-    d = {'prediction': ['low', 'medium', 'high'][int(np.argmax(pred))],
-         'low_probability': str(pred[0]), 'medium_probability': str(pred[1]),
-         'high_probability': str(pred[2])}
-    return jsonify(d)
+            d = {'prediction': ['low', 'medium', 'high'][int(np.argmax(pred))],
+                 'low_probability': str(pred[0]), 'medium_probability': str(pred[1]),
+                 'high_probability': str(pred[2])}
+            return jsonify(d)
 
 
 class LogParser(threading.Thread):
+    """
+    Thread that polls the iRail API to check for new occupancy logs, parses them and stores them
+    """
     def __init__(self):
         super(LogParser, self).__init__()
 
@@ -114,11 +129,16 @@ class LogParser(threading.Thread):
                 print(min_date)
             except Exception:
                 raise
-            time.sleep(2)
+            # Poll the API every 60 seconds
+            time.sleep(60)
 
 
 # Run this only if the script is ran directly.
 if __name__ == '__main__':
+
+    SERVER_IP = 'localhost'
+    HOST_IP = 8000
+
     try:
         print('Starting the server...')
         global mongoDAO
@@ -126,7 +146,7 @@ if __name__ == '__main__':
         log_parser = LogParser()
         log_parser.start()
 
-        start_restfulserver()
+        server = SpitsGidsServer(SERVER_IP, HOST_IP)
     except Exception:
         print('Caught FATAL exception:')
         raise

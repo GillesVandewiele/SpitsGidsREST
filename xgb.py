@@ -68,5 +68,6 @@ class XGBModel(object):
         else:
             self.model = XGBClassifier(objective='multi:softmax')
 
+        print('Constructing model with', len(data), 'samples')
         self.model.fit(data, target)
         return self.model

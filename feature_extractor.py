@@ -52,7 +52,7 @@ def extract_features_prediction(departureTime, vehicle, from_id, to_id, mongoDAO
     else:
         avg_stop_time_to, to_lat, to_lng = to_station['avg_stop_times'], to_station['latitude'], to_station['longitude']
 
-    return { #'vehicle_id': vehicle, 'vehicle_type': vehicle_type, 'week_day': week_day,
+    return { 'vehicle_id': vehicle, 'vehicle_type': vehicle_type, 'week_day': week_day,
              'seconds_since_midnight': seconds_since_midnight, 'month': month, 'morning_jam': morning_commute,
              'evening_jam': evening_commute, 'avg_stop_time_from': avg_stop_time_from,
              'avg_stop_time_to': avg_stop_time_to,
@@ -109,7 +109,7 @@ def extract_basic_features(log, mongoDAO):
     else:
         avg_stop_time_to, to_lat, to_lng = to_station['avg_stop_times'], to_station['latitude'], to_station['longitude']
 
-    return log, {#'vehicle_id': log['vehicle_id'], 'vehicle_type': vehicle_type, 'week_day': week_day,
+    return log, {'vehicle_id': log['vehicle_id'], 'vehicle_type': vehicle_type, 'week_day': week_day,
                  'seconds_since_midnight': seconds_since_midnight, 'month': month,  'occupancy': log['occupancy'],
                  'morning_jam': morning_commute, 'evening_jam': evening_commute,
                  'avg_stop_time_from': avg_stop_time_from, 'avg_stop_time_to': avg_stop_time_to,

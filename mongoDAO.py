@@ -101,3 +101,9 @@ class SpitsGidsMongoDAO(object):
             return None
         else:
             return station_cursor[0]
+
+    def get_feature_vectors(self):
+        feature_vectors = []
+        for feature_vector in self.db['features'].find({}):
+            feature_vectors.append(feature_vector)
+        return feature_vectors

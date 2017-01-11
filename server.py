@@ -4,20 +4,47 @@ from flask_restful import Api
 import threading
 
 from datascraper import parse_logs
+from feature_extractor import extract_features_prediction
 from mongoDAO import SpitsGidsMongoDAO
+from dateutil.parser import parse
+import pandas as pd
+import numpy as np
 
-from xgboost. import load_model
+from xgb import XGBModel
 
 SERVER_IP = 'localhost'
 HOST_IP = 8000
 app = Flask(__name__)
 api = Api(app)
-xgb = None
+
+
+def load_xgb_clf():
+    feature_vectors = []
+    for feature_vector in mongoDAO.db['features'].find({}):
+        feature_vectors.append(feature_vector)
+
+    label_col = 'occupancy'
+    df = pd.DataFrame(feature_vectors)
+    # df = pd.get_dummies(df, columns=['week_day', 'vehicle_type', 'vehicle_id'])
+    df = df.drop(['_id', 'log_id'], axis=1)
+    global feature_cols
+    feature_cols = list(set(df.columns) - {'occupancy'})
+    return XGBModel(df, feature_cols, label_col)
+
+
+def train_model():
+    mongoDAO.process_unprocessed_logs()
+    xgb_clf = load_xgb_clf()
+    # if xgb_clf.parameters == {}:
+    #     xgb_clf.optimize_hyperparams()
+    xgb_clf.construct_model()
+    return xgb_clf.model
+
 
 # Start the restful server.
 def start_restfulserver(local=False):
-    # TODO: load trained xgb model from DB
-    xgb = load_model
+    global xgb
+    xgb = train_model()
     if not local:
         app.run(host=SERVER_IP, port=HOST_IP)
     else:
@@ -57,12 +84,18 @@ def predict():
     Predicts the occupancy level, given a certain departure time, arrival and departure station and departure time
     :return: the predicted occupancy level
     """
-    departureTime = request.args.get('departureTime')
+    departureTime = parse(request.args.get('departureTime'))
     vehicle = request.args.get('vehicle')
     _from = request.args.get('from')
     _to = request.args.get('to')
+    df = pd.DataFrame([extract_features_prediction(departureTime, vehicle, _from, _to, mongoDAO)])
+    df = df[feature_cols]
+    print(df)
+    pred = xgb.predict_proba(df)[0]
 
-    d = {'prediction': 'unknown'}
+    d = {'prediction': ['low', 'medium', 'high'][int(np.argmax(pred))],
+         'low_probability': str(pred[0]), 'medium_probability': str(pred[1]),
+         'high_probability': str(pred[2])}
     return jsonify(d)
 
 
@@ -88,9 +121,12 @@ class LogParser(threading.Thread):
 if __name__ == '__main__':
     try:
         print('Starting the server...')
+        global mongoDAO
         mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
         log_parser = LogParser()
         log_parser.start()
+
+        start_restfulserver()
     except Exception:
         print('Caught FATAL exception:')
         raise

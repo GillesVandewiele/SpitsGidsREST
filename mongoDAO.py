@@ -60,32 +60,6 @@ class SpitsGidsMongoDAO(object):
         feature_vector['log_id'] = log_id
         return self.db['features'].insert_one(feature_vector)
 
-    def load_xgb_clf(self):
-        feature_vectors = []
-        for feature_vector in self.db['features'].find({}):
-            feature_vectors.append(feature_vector)
-
-        label_col = 'occupancy'
-        df = pd.DataFrame(feature_vectors)
-        df = pd.get_dummies(df, columns=['week_day', 'vehicle_id', 'vehicle_type'])
-        df = df.drop(['_id', 'log_id'], axis=1)
-        return XGBModel(df, list(set(df.columns) - {'occupancy'}), label_col)
-
-    def optimize_hyperparams(self):
-        self.process_unprocessed_logs()
-        print(self.load_xgb_clf().optimize_hyperparams(init_points=3, n_iter=3))
-
-    def train_model(self):
-        # TODO: create a table to store the model (model, data) and the hyper-parameters
-        # TODO: load the most recent model and train it with extra new data
-        # TODO: store the new model
-        self.process_unprocessed_logs()
-        xgb_clf = self.load_xgb_clf()
-        if xgb_clf.parameters == {}:
-            xgb_clf.optimize_hyperparams()
-        xgb_clf.construct_model()
-        xgb_clf.model_to_json()
-
     def process_unprocessed_logs(self):
         """
         Filter out all logs with processed equal to False and calculate their corresponding feature vector. Then put the

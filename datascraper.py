@@ -72,7 +72,7 @@ def parse_log_line(logline, min_date=None):
                 parsed_log['from_id'] = from_id
                 parsed_log['to_id'] = to_id
                 parsed_log['vehicle_id'] = vehicle_id
-                parsed_log['occupancy'] = occupancy
+                parsed_log['occupancy'] = {'low': 0, 'medium': 1, 'high': 2}[occupancy]
                 parsed_log['connection'] = connection
                 parsed_log['user_agent'] = user_agent
                 parsed_log['processed'] = False
@@ -85,9 +85,9 @@ def parse_log_line(logline, min_date=None):
 
 
 
-from mongoDAO import SpitsGidsMongoDAO
+# from mongoDAO import SpitsGidsMongoDAO
 #
-mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
+# mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
 # mongoDAO.clean_logs_table()
 # mongoDAO.clean_features_table()
 # # print(insert_logs_from_file('occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO))
@@ -100,7 +100,10 @@ mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
 # print(mongoDAO.get_station_info_by_id('008844008'))
 # mongoDAO.count_records_per_table()
 
-mongoDAO.clean_logs_table()
-mongoDAO.clean_features_table()
-insert_logs_from_file('data/occupancy-until-20161219.nldjson', mongoDAO)
-mongoDAO.process_unprocessed_logs()
+#
+# from mongoDAO import SpitsGidsMongoDAO
+# mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
+# mongoDAO.clean_logs_table()
+# mongoDAO.clean_features_table()
+# insert_logs_from_file('data/occupancy-until-20161219.nldjson', mongoDAO)
+# insert_logs_from_file('data/occupancy-until-20161029.newlinedelimitedjsonobjects', mongoDAO)

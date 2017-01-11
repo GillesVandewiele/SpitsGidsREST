@@ -33,7 +33,7 @@ def predict_by_vehicle():
     vehicle = request.args.get('vehicle')
     departureTime = request.args.get('departureTime')
 
-    d = {'prediction': 'low'}
+    d = {'prediction': 'unknown'}
     return jsonify(d)
 
 
@@ -47,7 +47,7 @@ def predict_by_from_to():
     _from = request.args.get('from')
     _to = request.args.get('to')
 
-    d = {'prediction': 'low'}
+    d = {'prediction': 'unknown'}
     return jsonify(d)
 
 
@@ -62,7 +62,7 @@ def predict():
     _from = request.args.get('from')
     _to = request.args.get('to')
 
-    d = {'prediction': 'low'}
+    d = {'prediction': 'unknown'}
     return jsonify(d)
 
 

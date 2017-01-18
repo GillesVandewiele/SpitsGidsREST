@@ -10,14 +10,14 @@ setup(
     author_email='',
     description='',
     install_requires=[
-          'pandas',
           'flask',
-          'numpy',
           'xgboost',
           'scikit_learn',
           'flask_restful',
           'pymongo',
           'requests',
-          'python_dateutil'
+          'python_dateutil',
+          'pandas',
+          'numpy'
     ]
 )

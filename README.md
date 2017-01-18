@@ -17,9 +17,8 @@ GET http://localhost:8000/predict?departureTime=2017-01-15T17:00:55&vehicle=IC28
 ## Running
 
 0. Install the dependencies `...`
-1. First make the prediction model by running `python xgb.py`
-2. Start the server with `python server.py`
+1. Start the server with `python server.py`
 
 ## License
 
-...
+[here](LICENSE.txt)

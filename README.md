@@ -2,55 +2,14 @@
 
 This is a REST server that uses machine learning to predict occupancy on the Belgian train network.
 
-## Endpoints
+## Example
 
-### GET `/predict_by_vehicle`
-#### Parameters
-
-* `departureTime`
-* `vehicle`
-
-#### Returns
-
-Returns a predicted occupancy. Terms can be found at https://api.irail.be/terms/
-
+GET http://localhost:8000/predict?departureTime=2017-01-15T17:00:55&vehicle=IC2816&from=008892007&to=008813003
 ```json
 {
-  "prediction": "low"
-}
-```
-
-### GET `/predict_by_from_to`
-#### Parameters
-
-* `departureTime`
-* `from`
-* `to`
-
-#### Returns
-
-Returns a predicted occupancy. Terms can be found at https://api.irail.be/terms/
-
-```json
-{
-  "prediction": "low"
-}
-```
-
-### GET `/predict`
-#### Parameters
-
-* `departureTime`
-* `vehicle`
-* `from`
-* `to`
-
-#### Returns
-
-Returns a predicted occupancy. Terms can be found at https://api.irail.be/terms/
-
-```json
-{
+  "high_probability": "0.176085",
+  "low_probability": "0.515583",
+  "medium_probability": "0.308332",
   "prediction": "low"
 }
 ```

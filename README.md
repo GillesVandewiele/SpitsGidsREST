@@ -17,7 +17,8 @@ GET http://localhost:8000/predict?departureTime=2017-01-15T17:00:55&vehicle=IC28
 ## Running
 
 0. Install the dependencies `(sudo) python setup.py install`
-1. Start the server with `python server.py`
+1. Start mongod on a certain port
+2. Change the host and portnumber of your running MongoDB in `server.py` and then execute it: `python server.py`
 
 ## License
 

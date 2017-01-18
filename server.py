@@ -17,7 +17,7 @@ from xgb import XGBModel
 
 class SpitsGidsServer:
 
-    def __init__(self, host, port):
+    def __init__(self, host, port, mongoDAO):
         self.app = Flask('SpitsGidsServer')
         api = Api(self.app)
         self.host = host
@@ -27,12 +27,12 @@ class SpitsGidsServer:
         self.categorical_cols = ['week_day', 'vehicle_type', 'vehicle_id']
         self.label_col = None
         self.data = None
+        self.mongoDAO = mongoDAO
         self.start_server(self.host, self.port)
 
-    def train_model(self):
-        mongoDAO.process_unprocessed_logs()
-
-        feature_vectors = mongoDAO.get_feature_vectors()
+    def load_data(self):
+        self.mongoDAO.process_unprocessed_logs()
+        feature_vectors = self.mongoDAO.get_feature_vectors()
         self.label_col = 'occupancy'
         self.data = pd.DataFrame(feature_vectors)
         print(self.data['week_day'])
@@ -42,10 +42,12 @@ class SpitsGidsServer:
         self.feature_cols = list(set(self.data.columns) - {'occupancy'})
         self.xgb_clf = XGBModel(self.data, self.feature_cols, self.label_col)
 
-        # if self.xgb_clf.parameters == {}:
-        #     self.xgb_clf.optimize_hyperparams()
-
+    def train_model(self):
+        self.load_data()
+        ParamOpt(self.xgb_clf).start()
         self.xgb_clf.construct_model()
+        #  time.strftime('%y%m%d%H%M%S.model')
+        #self.xgb_clf.load_model('170115175919.model')
 
     def start_server(self, host, port, local=False):
         self.train_model()
@@ -56,7 +58,7 @@ class SpitsGidsServer:
             self.app.run(debug=True, port=host)
 
     def predict(self, departure_time, vehicle, _from, _to):
-        df = pd.DataFrame([extract_features_prediction(departure_time, vehicle, _from, _to, mongoDAO)])
+        df = pd.DataFrame([extract_features_prediction(departure_time, vehicle, _from, _to, self.mongoDAO)])
         df = pd.get_dummies(df, self.categorical_cols)
         dummies_frame = pd.get_dummies(self.data)
         df = df.reindex(columns=dummies_frame.columns, fill_value=0)
@@ -104,7 +106,7 @@ class SpitsGidsServer:
             _from = request.args.get('from')
             _to = request.args.get('to')
             pred = self.predict(departureTime, vehicle, _from, _to)
-
+            print(pred)
             d = {'prediction': ['low', 'medium', 'high'][int(np.argmax(pred))],
                  'low_probability': str(pred[0]), 'medium_probability': str(pred[1]),
                  'high_probability': str(pred[2])}
@@ -115,8 +117,9 @@ class LogParser(threading.Thread):
     """
     Thread that polls the iRail API to check for new occupancy logs, parses them and stores them
     """
-    def __init__(self):
+    def __init__(self, mongoDAO):
         super(LogParser, self).__init__()
+        self.mongoDAO = mongoDAO
 
     def onThread(self, function, *args, **kwargs):
         self.q.put((function, args, kwargs))
@@ -125,12 +128,28 @@ class LogParser(threading.Thread):
         min_date = None
         while 1:
             try:
-                min_date = parse_logs('https://api.irail.be/logs/', mongoDAO, min_date)
+                min_date = parse_logs('https://api.irail.be/logs/', self.mongoDAO, min_date)
                 print(min_date)
             except Exception:
                 raise
             # Poll the API every 60 seconds
             time.sleep(60)
+
+
+class ParamOpt(threading.Thread):
+    """
+    Thread that polls the iRail API to check for new occupancy logs, parses them and stores them
+    """
+
+    def __init__(self, xgb_clf):
+        super(ParamOpt, self).__init__()
+        self.xgb_clf = xgb_clf
+
+    def onThread(self, function, *args, **kwargs):
+        self.q.put((function, args, kwargs))
+
+    def run(self):
+        self.xgb_clf.optimize_hyperparams()
 
 
 # Run this only if the script is ran directly.
@@ -141,12 +160,12 @@ if __name__ == '__main__':
 
     try:
         print('Starting the server...')
-        global mongoDAO
         mongoDAO = SpitsGidsMongoDAO('localhost', 9000)
-        log_parser = LogParser()
+        log_parser = LogParser(mongoDAO)
         log_parser.start()
 
-        server = SpitsGidsServer(SERVER_IP, HOST_IP)
+        server = SpitsGidsServer(SERVER_IP, HOST_IP, mongoDAO)
+        print('started')
     except Exception:
         print('Caught FATAL exception:')
         raise

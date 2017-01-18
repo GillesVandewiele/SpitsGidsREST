@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$USER_HOME$/MFI/.idea/MFI.iml" filepath="$USER_HOME$/MFI/.idea/MFI.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/SpitsGidsREST.iml" filepath="$PROJECT_DIR$/.idea/SpitsGidsREST.iml" />
     </modules>
   </component>

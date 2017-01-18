@@ -1,8 +1,11 @@
 import pandas as pd
 import sys
+
+import time
 from sklearn.cross_validation import StratifiedKFold
 from bayes_opt import BayesianOptimization
 from sklearn.cross_validation import cross_val_score
+from xgboost import Booster
 from xgboost import XGBClassifier
 import xgboost
 
@@ -15,7 +18,7 @@ class XGBModel(object):
         self.parameters = {}
         self.model = None
 
-    def optimize_hyperparams(self, initial_params={}, verbose=1, init_points=1, n_iter=1):
+    def optimize_hyperparams(self, initial_params=None, verbose=1, init_points=1, n_iter=1):
         data = self.train[self.feature_names]
         target = self.train[self.label_name]
 
@@ -40,14 +43,14 @@ class XGBModel(object):
         }
 
         xgbBO = BayesianOptimization(xgbcv, params, verbose=verbose)
-        if initial_params != {}: xgbBO.explore(initial_params)
+        if initial_params is not None: xgbBO.explore(initial_params)
         xgbBO.maximize(init_points=init_points, n_iter=n_iter, n_restarts_optimizer=100)
 
         best_params = xgbBO.res['max']['max_params']
         self.parameters = best_params
         return self.parameters
 
-    def construct_model(self):
+    def construct_model(self, file_name=None):
         data = self.train[self.feature_names]
         target = self.train[self.label_name]
 
@@ -70,4 +73,12 @@ class XGBModel(object):
 
         print('Constructing model with', len(data), 'samples')
         self.model.fit(data, target)
+        if file_name is not None:
+            print('saving model', file_name)
+            self.model._Booster.save_model(file_name)
+            print('done')
         return self.model
+
+    def load_model(self, file_name):
+        if self.model is None: self.model = XGBClassifier()
+        self.model._Booster = Booster(model_file=file_name)

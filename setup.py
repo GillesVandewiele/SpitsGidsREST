@@ -11,11 +11,11 @@ setup(
     description='',
     install_requires=[
           'pandas',
-          'Flask',
+          'flask',
           'numpy',
           'xgboost',
           'scikit_learn',
-          'Flask_RESTful',
+          'flask_restful',
           'pymongo',
           'requests',
           'python_dateutil'

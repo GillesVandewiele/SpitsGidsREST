@@ -13,6 +13,7 @@ setup(
           'flask',
           'xgboost',
           'scikit_learn',
+	  'scipy',
           'flask_restful',
           'pymongo',
           'requests',

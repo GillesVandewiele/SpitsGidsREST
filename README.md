@@ -1,6 +1,6 @@
 # Spitsgids REST server
 
-This is a REST server that uses machine learning to predict occupancy on the Belgian train network.
+This is a REST server that uses machine learning to predict occupancy on the Belgian train network. An endpoint is currently running on `193.190.127.247`
 
 ## Example
 

@@ -3,8 +3,6 @@ from flask import Flask, request, jsonify
 from flask_restful import Api
 import threading
 
-from sklearn.preprocessing import OneHotEncoder
-
 from datascraper import parse_logs
 from feature_extractor import extract_features_prediction
 from mongoDAO import SpitsGidsMongoDAO
